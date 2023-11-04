@@ -19,7 +19,7 @@ NEXT_STATE = {
     7: (lambda _ : False),#>=4
     8: (lambda _ : False),#>=4
 }
-def neigbours_count(board: set[(int, int)], i: int, j: int) -> int:
+def neigbours_count(board: set[(int, int, bool)], i: int, j: int) -> int:
     """
     pour chaque cellules vivantes tester sur le set l'existance des voisin (i, j-1), ....
     à chaque existance on ajoute 1 au count.
@@ -28,19 +28,22 @@ def neigbours_count(board: set[(int, int)], i: int, j: int) -> int:
     dif = [-1, 0, 1]
     for r in dif:
         for c in dif:
-            if (i+r, j+c)!=(i,j) and (i+r, j+c) in board:
+            if (i+r, j+c)!=(i,j) and ((i+r, j+c, False) in board or (i+r, j+c, True) in board):
                 count += 1
     return count
 
-def cell_next_state(board: set[(int, int)], i: int, j: int) -> bool :
+def cell_next_state(board: set[(int, int, bool)], i: int, j: int) -> (int, int, bool) :
     fn = NEXT_STATE[neigbours_count(board, i, j)]#est une fonction
-    old_state = (i, j) in board
-    return fn(old_state)
+    old_state = ((i, j, False) in board or (i, j, True) in board)
+    new_state = fn(old_state)
+    if new_state:
+        return (i, j, new_state!=old_state)
+    return None
 
-def find_spawn_candidat(board: set[(int, int)]) -> set((int, int)):
+def find_spawn_candidat(board: set[(int, int, bool)]) -> set((int, int)):
     res = set()
     dif = [-1, 0, 1]
-    for (i,j) in board:
+    for (i,j, _) in board:
         # 1 : found candidat cells around the current cell (i, j)
         candidat = set()
         for r in dif:
@@ -50,32 +53,41 @@ def find_spawn_candidat(board: set[(int, int)]) -> set((int, int)):
                     candidat.add(cell)
         # 2 : check for each candidat cell its next_state
         for (ii, jj) in candidat:
-            if (ii, jj) not in board and cell_next_state(board, ii, jj):
-                res.add((ii, jj))
+            if (ii, jj) not in board and cell_next_state(board, ii, jj) is not None:
+                res.add((ii, jj, True))
     return res
 
-def game_of_life(board: set[(int, int)]) -> set[(int, int)]:
+def game_of_life(board: set[(int, int, bool)]) -> set[(int, int)]:
     """
     board : est un ensemble des coordonnées (i,j) des cellules vivantes
     """
-    xs = set([(i, j)  for (i, j) in board if cell_next_state(board, i, j)])
+    xs = set()
+    for (i, j, _) in board:
+        new_state = cell_next_state(board, i, j)
+        if new_state is not None:
+            xs.add(new_state)
     return xs.union(find_spawn_candidat(board))
 
-def draw_with_dim(board: set[(int, int)], row_bounds: (int, int), columns_bounds: (int, int)) -> list[str]:
+def prGreen(skk) -> str: 
+    return "\033[92m{}\033[00m" .format(skk)
+ 
+def draw_with_dim(board: set[(int, int, bool)], row_bounds: (int, int), columns_bounds: (int, int)) -> list[str]:
     if row_bounds is None or columns_bounds is None:
         return list()
     res = list()
     for i in range(row_bounds[0], row_bounds[1]+1):
         line = list()
         for j in range(columns_bounds[0], columns_bounds[1]+1):
-            if (i, j) in board:
+            if (i, j, False) in board:
                 line.append(" @ ")
+            elif (i, j, True) in board:
+                line.append(" " + prGreen("@") + " ")
             else:
                 line.append(" . ")
         res.append("".join(line))
     return res
 
-def draw(board: set[(int, int)]) -> (list[str], (int, int), (int, int)):
+def draw(board: set[(int, int, bool)]) -> (list[str], (int, int), (int, int)):
     if len(board)==0:
        return (list(), (0,0), (0,0))
     for c in board:
@@ -83,7 +95,7 @@ def draw(board: set[(int, int)]) -> (list[str], (int, int), (int, int)):
         break
     row_bounds = [first[0], first[0]]#(min, max)
     columns_bounds = [first[1], first[1]]
-    for (i, j) in board:
+    for (i, j, _) in board:
         if i<row_bounds[0]:
             row_bounds[0]=i
         elif i>row_bounds[1]:
@@ -118,8 +130,8 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    board = set([(i, j) for i in range(10) for j in range(10) if random.random()>0.5])
-    #board = set([(i, j) for i in range(3) for j in range(3)])
+    board = set([(i, j, True) for i in range(10) for j in range(10) if random.random()>0.5])
+    #board = set([(i, j, True) for i in range(3) for j in range(3)])
     iteration = 1
 
     max_line = 0
@@ -145,7 +157,7 @@ def main():
         for _ in range(0, max_line-len(lines)+1):
             print("")
         iteration += 1
-        sleep(1)
+        sleep(3)
 
 if __name__ == "__main__":
     main()
