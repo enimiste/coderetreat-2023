@@ -49,8 +49,8 @@ if __name__=="__main__":
     event_handler = MyHandler()
     observer = Observer()
     observer.schedule(event_handler,  path=dir,  recursive=False)
-    observer.has_changes=True # to force first run of tests
     observer.start()
+    event_handler.has_changes=True # to force first run of tests
 
     os.system('clear')
     print("Working dir : " + dir)
