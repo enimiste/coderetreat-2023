@@ -2,6 +2,8 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import os
+import sys
+from os import path
 import re
 
 """
@@ -10,6 +12,8 @@ Requirements :
 - pytest==7.4.3
 - pytest-cov==4.1.0
 - watchdog==3.0.0
+
+Usage : python watch_tests.py [path/to/tests/files/folder]
 """
 
 class  MyHandler(FileSystemEventHandler):
@@ -17,16 +21,18 @@ class  MyHandler(FileSystemEventHandler):
         self.has_changes = False
 
     def  on_modified(self,  event):
-        # print(f'event type: {event.event_type} path : {event.src_path}')
         if re.match('.*/test_(.*)\.py', event.src_path):
             self.has_changes = True
 
-    def run_tests(self):
+    def run_tests(self, dir):
         if self.has_changes:
-            os.system('clear')
+            #os.system('clear')
+            os.chdir(dir)
+            os.system('pwd')
             os.system('pytest --cov')
-            print('Type <Ctrl+C> to stop the watcher')
+            print("Working dir : " + dir)
             print("Watching for test files changes ...")
+            print('Type <Ctrl+C> to stop the watcher')
             self.has_changes = False
 
     def  on_created(self,  event):
@@ -36,17 +42,24 @@ class  MyHandler(FileSystemEventHandler):
         pass
 
 if __name__=="__main__":
-    os.system('clear')
-    print("Watching for test files changes ...")
-    print('Type <Ctrl+C> to stop the watcher')
+    dir = path.abspath(sys.argv[1] if len(sys.argv)>1 else '.')
+    if not path.exists(dir):
+        raise RuntimeError("Folder not found : " + dir)
+    
     event_handler = MyHandler()
     observer = Observer()
-    observer.schedule(event_handler,  path='.',  recursive=False)
+    observer.schedule(event_handler,  path=dir,  recursive=False)
+    observer.has_changes=True # to force first run of tests
     observer.start()
+
+    os.system('clear')
+    print("Working dir : " + dir)
+    print("Watching for test files changes ...")
+    print('Type <Ctrl+C> to stop the watcher')
 
     try:
         while  True:
-            event_handler.run_tests()
+            event_handler.run_tests(dir)
             time.sleep(1)
     except  KeyboardInterrupt:
         observer.stop()
