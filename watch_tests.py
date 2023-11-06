@@ -9,7 +9,7 @@ class  MyHandler(FileSystemEventHandler):
         # print(f'event type: {event.event_type} path : {event.src_path}')
         if re.match('.*/test_(.*)\.py', event.src_path):
             os.system('clear')
-            os.system('pytest')
+            os.system('pytest --cov')
             print('Type <Ctrl+C> to stop the watcher')
             print("Watching for test files changes ...")
 
